@@ -70,8 +70,8 @@ All `/api/tasks` endpoints require a valid JWT.
 
    ```env
    PORT=5000
-   MONGO_URI=your_mongodb_connection_string
-   JWT_SECRET=your_secure_jwt_secret
+   MONGO_URI=
+   JWT_SECRET=
    ```
 
 5. Start the application:
