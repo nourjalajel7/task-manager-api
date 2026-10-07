@@ -1,10 +1,19 @@
 const mongoose = require("mongoose");
 const Task = require("../models/taskmodels");
 
+// Only these fields can be supplied by the client. Ownership is server-controlled.
+const getTaskFields = (body = {}) => {
+  const fields = {};
+  for (const key of ["title", "description", "status", "priority", "dueDate"]) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) fields[key] = body[key];
+  }
+  return fields;
+};
+
 exports.createTask = async (req, res, next) => {
   try {
     const task = await Task.create({
-      ...req.body,
+      ...getTaskFields(req.body),
       user: req.user._id,
     });
     res.status(201).json(task);
@@ -30,7 +39,7 @@ exports.getTask = async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ message: "Invalid task id" });
     }
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findOne({ _id: req.params.id, user: req.user._id });
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (err) {
@@ -44,12 +53,17 @@ exports.updateTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task id" });
     }
 
+    const updates = getTaskFields(req.body);
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "Provide at least one editable task field" });
+    }
+
     const task = await Task.findOneAndUpdate(
       {
         _id: req.params.id,
         user: req.user._id,
       },
-      req.body,
+      { $set: updates },
       {
         new: true,
         runValidators: true,

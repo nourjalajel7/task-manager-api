@@ -73,10 +73,11 @@ app.use((req, res) => {
 // ==============================
 
 app.use((err, req, res, next) => {
-  console.error(err);
-
-  res.status(err.status || 500).json({
-    message: err.message || "Server error",
+  const status = err.status || 500;
+  // Avoid exposing database details, credentials, or raw request values.
+  if (status >= 500) console.error("Request failed:", err.name);
+  res.status(status).json({
+    message: status >= 500 ? "Server error" : err.message || "Request failed",
   });
 });
 

@@ -13,17 +13,20 @@ const generateToken = (userId) => {
 // Register
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
 
     // Check required fields
-    if (!name || !email || !password) {
+    if (typeof name !== "string" || !name.trim() ||
+        typeof email !== "string" || !email.trim() ||
+        typeof password !== "string" || password.length < 6) {
       return res.status(400).json({
-        message: "Name, email and password are required",
+        message: "Name and email are required; password must be at least 6 characters",
       });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(400).json({
@@ -34,7 +37,7 @@ exports.register = async (req, res, next) => {
     // Create user
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -51,6 +54,12 @@ exports.register = async (req, res, next) => {
       token,
     });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ message: "Invalid registration details" });
+    }
     next(err);
   }
 };
@@ -58,17 +67,18 @@ exports.register = async (req, res, next) => {
 // Login
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
     // Check required fields
-    if (!email || !password) {
+    if (typeof email !== "string" || !email.trim() ||
+        typeof password !== "string" || !password) {
       return res.status(400).json({
         message: "Email and password are required",
       });
     }
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
       return res.status(401).json({
